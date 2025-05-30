@@ -6,6 +6,12 @@ const WEIGHT_LIMITS: Record<string, { min: number; max: number }> = {
   Overnight: { min: 0.1, max: 5 },
 };
 
+type ResultType = {
+  shippingCost: number;
+  estimatedDays: number;
+  breakdown: { [key: string]: string | number };
+};
+
 function App() {
   const [formData, setFormData] = useState({
     shippingMethod: "Standard",
@@ -17,6 +23,8 @@ function App() {
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<ResultType | null>(null);
+
   const { min, max } = WEIGHT_LIMITS[formData.shippingMethod];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -33,11 +41,11 @@ function App() {
       }));
     }
     setError(null);
+    setResult(null); // clear results if form changes
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Submitting form...");
 
     const weight = parseFloat(formData.weight);
 
@@ -45,6 +53,7 @@ function App() {
       setError(
         `Weight for ${formData.shippingMethod} shipping must be between ${min}kg and ${max}kg.`
       );
+      setResult(null);
       return;
     }
 
@@ -59,9 +68,6 @@ function App() {
       destinationZone: formData.destinationZone,
     };
 
-    console.log("Request body:", requestBody);
-
-
     try {
       const response = await fetch("https://shipping-calculator.matthayward.workers.dev/calculate", {
         method: "POST",
@@ -71,9 +77,10 @@ function App() {
 
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
-      alert("Shipping cost: " + data.cost);
+      setResult(data); 
     } catch (error) {
-      alert("Error calculating shipping!");
+      setError("Error calculating shipping!");
+      setResult(null);
     }
   };
 
@@ -85,8 +92,8 @@ function App() {
 
       <h2>Shipping Calculator Form</h2>
       <form className="shipping-form" onSubmit={handleSubmit}>
-        <div className="form-columns">
-          <div className="column">
+        <div className="form-columns" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+          <div className="column" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <label htmlFor="shippingMethod">Shipping Method:</label>
             <select
               name="shippingMethod"
@@ -154,7 +161,6 @@ function App() {
           </div>
         </div>
 
-        {}
         {error && (
           <div style={{ color: 'red', margin: '16px 0', fontWeight: 600 }}>{error}</div>
         )}
@@ -166,7 +172,33 @@ function App() {
         </div>
       </form>
 
-      <footer>
+      {/* Show Results */}
+      {result && (
+        <div className="shipping-result" style={{marginTop: 32, maxWidth: 500, marginLeft: "auto", marginRight: "auto", border: "1px solid #eee", borderRadius: 8, boxShadow: "0 2px 8px #0001", padding: 24, background: "#fafbfc"}}>
+          <h3 style={{marginTop: 0}}>Shipping Results</h3>
+          <p>
+            <strong>Shipping Cost:</strong> ${result.shippingCost.toFixed(2)} <br />
+            <strong>Estimated Delivery:</strong> {result.estimatedDays} days
+          </p>
+          <h4>Breakdown:</h4>
+          <table style={{borderCollapse: 'collapse', width: '100%'}}>
+            <tbody>
+              {Object.entries(result.breakdown).map(([key, value]) => (
+                <tr key={key}>
+                  <td style={{border: '1px solid #ccc', padding: 4, fontWeight: 500}}>
+                    {key}
+                  </td>
+                  <td style={{border: '1px solid #ccc', padding: 4}}>
+                    {typeof value === 'number' ? value.toString() : value}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <footer style={{marginTop: 64, textAlign: "center"}}>
         <p>© 2025 SC Official Website. All rights reserved.</p>
       </footer>
     </main>
