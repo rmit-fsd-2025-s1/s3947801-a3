@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { calculateShipping, ShippingRequest } from "./pages/api/shippingCalculator";
 
 const WEIGHT_LIMITS: Record<string, { min: number; max: number }> = {
   Standard: { min: 0.1, max: 20 },
@@ -44,11 +45,10 @@ function App() {
     setResult(null); // clear results if form changes
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const weight = parseFloat(formData.weight);
-
     if (isNaN(weight) || weight < min || weight > max) {
       setError(
         `Weight for ${formData.shippingMethod} shipping must be between ${min}kg and ${max}kg.`
@@ -57,7 +57,7 @@ function App() {
       return;
     }
 
-    const requestBody = {
+    const requestBody: ShippingRequest = {
       shippingMethod: formData.shippingMethod,
       weight: weight,
       dimensions: {
@@ -69,15 +69,8 @@ function App() {
     };
 
     try {
-      const response = await fetch("https://shipping-calculator.matthayward.workers.dev/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) throw new Error("API error");
-      const data = await response.json();
-      setResult(data); 
+      const data = await calculateShipping(requestBody);
+      setResult(data);
     } catch (error) {
       setError("Error calculating shipping!");
       setResult(null);
